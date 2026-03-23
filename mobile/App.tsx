@@ -15,6 +15,7 @@ import { EmergencySOSScreen } from './src/screens/EmergencySOSScreen';
 import { CCTVFeedScreen } from './src/screens/CCTVFeedScreen';
 import { RewardsCatalogueScreen } from './src/screens/RewardsCatalogueScreen';
 import { TrafficAlertsScreen } from './src/screens/TrafficAlertsScreen';
+import { ChatbotScreen } from './src/screens/ChatbotScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -59,11 +60,11 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Feedback"
-        component={TrafficAlertsScreen}
+        name="Chat"
+        component={ChatbotScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
-            <Icon name="feedback" size={size} color={color} />
+            <Icon name="chat-bubble" size={size} color={color} />
           ),
         }}
       />

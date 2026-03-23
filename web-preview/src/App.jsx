@@ -1,5 +1,8 @@
+import { useState, useRef, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import './index.css';
+
+const N8N_WEBHOOK_URL = 'https://n8n.srv1154f02.hstgr.cloud/webhook/actioragent-test/chat';
 
 // Navigation Component
 function BottomNav() {
@@ -15,9 +18,9 @@ function BottomNav() {
         <span className="nav-icon">🗺️</span>
         <span className="nav-label">PLANNER</span>
       </Link>
-      <Link to="/feedback" className={`nav-item ${location.pathname === '/feedback' ? 'active' : ''}`}>
-        <span className="nav-icon">💬</span>
-        <span className="nav-label">FEEDBACK</span>
+      <Link to="/chat" className={`nav-item ${location.pathname === '/chat' ? 'active' : ''}`}>
+        <span className="nav-icon">🤖</span>
+        <span className="nav-label">CHAT</span>
       </Link>
       <Link to="/profile" className={`nav-item ${location.pathname === '/profile' ? 'active' : ''}`}>
         <span className="nav-icon">👤</span>
@@ -404,6 +407,115 @@ function CCTVFeed() {
   );
 }
 
+// Chatbot Screen
+function Chatbot() {
+  const navigate = useNavigate();
+  const [messages, setMessages] = useState([
+    { id: 1, role: 'bot', text: 'Hi! I\'m your PLUS Highway assistant. Ask me about routes, tolls, traffic conditions, or anything else!' },
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading]);
+
+  const sendMessage = async () => {
+    const trimmed = input.trim();
+    if (!trimmed || isLoading) return;
+
+    const userMsg = { id: Date.now(), role: 'user', text: trimmed };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const res = await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: trimmed }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      const botText = data.output || data.response || data.reply || data.text || data.message || JSON.stringify(data);
+
+      setMessages(prev => [...prev, { id: Date.now(), role: 'bot', text: botText }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { id: Date.now(), role: 'error', text: `Connection error: ${err.message}. Make sure your n8n workflow is active.` }]);
+    } finally {
+      setIsLoading(false);
+      inputRef.current?.focus();
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  return (
+    <div className="chat-wrapper">
+      <div className="header">
+        <button className="back-button" onClick={() => navigate('/')}>←</button>
+        <div className="header-title">PLUS ASSISTANT</div>
+        <div className="spacer"></div>
+      </div>
+
+      <div className="chat-messages">
+        {messages.map(msg => (
+          <div key={msg.id} className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-user' :
+              msg.role === 'error' ? 'chat-error' :
+                'chat-bubble-bot'
+            }`}>
+            {msg.role === 'bot' && <div className="bot-label">PLUS AI</div>}
+            {msg.text}
+          </div>
+        ))}
+        {isLoading && (
+          <div className="typing-indicator">
+            <div className="typing-dot"></div>
+            <div className="typing-dot"></div>
+            <div className="typing-dot"></div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="chat-input-area">
+        <input
+          ref={inputRef}
+          className="chat-input"
+          type="text"
+          placeholder="Ask me anything..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isLoading}
+        />
+        <button
+          className="chat-send-btn"
+          onClick={sendMessage}
+          disabled={!input.trim() || isLoading}
+        >
+          ➤
+        </button>
+      </div>
+
+      <BottomNav />
+    </div>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -413,7 +525,7 @@ function App() {
         <Route path="/results" element={<JourneyResults />} />
         <Route path="/sos" element={<EmergencySOS />} />
         <Route path="/cctv" element={<CCTVFeed />} />
-        <Route path="/feedback" element={<HomeDashboard />} />
+        <Route path="/chat" element={<Chatbot />} />
         <Route path="/profile" element={<HomeDashboard />} />
       </Routes>
     </BrowserRouter>
